@@ -1,0 +1,29 @@
+FROM registry.redhat.io/ubi9/ubi
+
+# --- system deps
+RUN dnf module enable -y nodejs:20 && \
+    dnf install -y nodejs && dnf clean all
+
+# --- non-root user
+RUN useradd -m devuser
+USER devuser
+ENV HOME=/home/devuser
+WORKDIR /home/devuser
+
+# 先把所有東西裝在另一個地方
+COPY --chown=devuser:devuser ./app /home/devuser/.template
+WORKDIR /home/devuser/.template
+RUN npm install
+
+# 回到 /app 準備掛載
+WORKDIR /workspace
+
+# 使用一個啟動腳本來處理「如果掛載點是空的，就填滿它」
+COPY --chown=devuser:devuser entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 5173
+
+ENTRYPOINT ["/entrypoint.sh"]
+#CMD ["npx", "vite", "--host", "0.0.0.0"]
+CMD ["sleep", "infinity"]
